@@ -5,35 +5,35 @@ const functions = require("firebase-functions");
 
 exports.helloWorld = functions.https.onRequest((request, response) => {
   functions.logger.info("Hello logs!", {structuredData: true});
-  response.send("Hello from Firebase!");
+  response.send({ "data": "Hello from Firebase!" });
 });
 
 exports.updateGoalIntervalLengthForProject = functions.https.onRequest((request, response) => {
     functions.logger.info("Hello logs!", {structuredData: true});
-    response.send("Goal interval updated");
+    response.send({ "data": "Hello from Firebase!" });
 });
 
 exports.getUser = functions.https.onRequest((request, response) => {
     functions.logger.info("Hello logs!", {structuredData: true});
-    response.send("User retreived");
+    response.send({ "data": "Hello from Firebase!" });
 });
 
 exports.takeABreak = functions.https.onRequest((request, response) => {
     functions.logger.info("Hello logs!", {structuredData: true});
-    response.send("Taking a break");
+    response.send({ "data": "Hello from Firebase!" });
 });
 
 exports.updateProjectName = functions.https.onRequest((request, response) => {
     functions.logger.info("Hello logs!", {structuredData: true});
-    response.send("Project name updated");
+    response.send({ "data": "Hello from Firebase!" });
 });
 
 exports.updateCurrentWorkingProject = functions.https.onRequest((request, response) => {
     functions.logger.info("Hello logs!", {structuredData: true});
-    response.send("Working project updated");
+    response.send({ "data": "Hello from Firebase!" });
 });
 
 exports.detectPerson = functions.https.onRequest((request, response) => {
     functions.logger.info("Hello logs!", {structuredData: true});
-    response.send("Detected person");
+    response.send({ "data": "Hello from Firebase!" });
 });
