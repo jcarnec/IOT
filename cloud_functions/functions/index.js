@@ -23,17 +23,13 @@ exports.getUser = functions.https.onRequest((request, response) => {
                 'name': 'College', 
                 'intervals': [
                     { 
-                        'startTimeStamp': '2022-03-03T08:33:28.263717', 
-                        'endTimeStamp': '2022-03-03 10:33:28.264650' 
+                        'startTimeStamp': '2022-03-04T08:33:28.263717', 
+                        'endTimeStamp': '2022-03-04 10:33:28.264650' 
                     }, 
                     { 
-                        'startTimeStamp': '2022-03-03T11:33:28.264758', 
-                        'endTimeStamp': '2022-03-03 16:33:28.264770' 
+                        'startTimeStamp': '2022-03-04T11:33:28.264758', 
+                        'endTimeStamp': '2022-03-04 11:55:28.264770',
                     }, 
-                    { 
-                        'startTimeStamp': '2022-03-03T17:33:28.264777', 
-                        'endTimeStamp': '2022-03-03T18:33:28.264777'
-                    }
                 ], 
                 'goalIntervalLengthInSeconds': 500 
             }, 
@@ -41,16 +37,16 @@ exports.getUser = functions.https.onRequest((request, response) => {
                 'name': 'IoT', 
                 'intervals': [
                     { 
-                        'startTimeStamp': '2022-03-03T06:33:28.265051', 
-                        'endTimeStamp': '2022-03-03 08:33:28.265063' 
+                        'startTimeStamp': '2022-03-04T04:33:28.265051', 
+                        'endTimeStamp': '2022-03-04T06:33:28.265063' 
                     }, 
                     {
-                         'startTimeStamp': '2022-03-03T11:33:28.265071', 
-                         'endTimeStamp': '2022-03-03 16:33:28.265078' 
+                         'startTimeStamp': '2022-03-04T08:33:28.265071', 
+                         'endTimeStamp': '2022-03-04T09:33:28.265078' 
                     }, 
                     { 
-                        'startTimeStamp': '2022-03-03T17:33:28.265085',
-                         'endTimeStamp': '2022-03-03T18:33:28.265085'
+                        'startTimeStamp': '2022-03-04T05:33:28.265085',
+                         'endTimeStamp': '2022-03-04T07:33:28.265085'
                     }
                 ], 
                 'goalIntervalLengthInSeconds': 500 
@@ -59,22 +55,22 @@ exports.getUser = functions.https.onRequest((request, response) => {
                 'name': 'Work', 
                 'intervals': [
                     { 
-                        'startTimeStamp': '2022-03-03T08:33:28.265093',
-                        'endTimeStamp': '2022-03-03 10:33:28.265100', 
+                        'startTimeStamp': '2022-03-04T08:33:28.265093',
+                        'endTimeStamp': '2022-03-04T10:33:28.265100', 
                     },
                     { 
-                        'startTimeStamp': '2022-03-03T11:33:28.265093',
+                        'startTimeStamp': '2022-03-04T11:33:28.265093',
                         'endTimeStamp': null, 
                     }
                 ], 
-                'goalIntervalLengthInSeconds': 72000
+                'goalIntervalLengthInSeconds': 7200
             }, 
             { 
                 'name': 'Personal', 
                 'intervals': [
                     { 
-                        'startTimeStamp': '2022-03-03T14:33:28.265113', 
-                        'endTimeStamp': '2022-03-03T16:33:28.264777'
+                        'startTimeStamp': '2022-03-04T04:33:28.265113', 
+                        'endTimeStamp': '2022-03-04T11:33:28.264777'
                     }
                 ], 
                 'goalIntervalLengthInSeconds': 500 
