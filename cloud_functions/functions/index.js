@@ -1,4 +1,7 @@
-const functions = require("firebase-functions");
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp(functions.config().firebase);
+
 
 // Create and Deploy Your First Cloud Functions
 // https://firebase.google.com/docs/functions/write-firebase-functions
@@ -8,77 +11,24 @@ exports.helloWorld = functions.https.onRequest((request, response) => {
     response.send({ "data": "Hello from Firebase!" });
 });
 
-exports.updateGoalIntervalLengthForProject = functions.https.onRequest((request, response) => {
+exports.updateGoalIntervalLengthForProject = functions.https.onCall(async (data, context) => {
     functions.logger.info("Hello logs!", { structuredData: true });
-    response.send({ "data": "Hello from Firebase!" });
+    const id = data['id'];
+    const projectIndex = data['selectedProjectNumber'];
+    const hour = data['hours'];
+    const minutes = data['minutes'];
+
+    const inSeconds = (hour * 60 * 60) + (minutes * 60);
+
+    const projectsRef = admin.database().ref('users/' + id + '/projects');
+    projectsRef.child(projectIndex).update({'goalIntervalLengthInSeconds': inSeconds});
+
+    return 'Successfully changed interval goal';
 });
 
 exports.getUser = functions.https.onRequest((request, response) => {
     functions.logger.info("Hello logs!", { structuredData: true });
-    response.send({ "data": { 
-        'isWorking': true,
-        'id': 1, 
-        'projects': [
-            { 
-                'name': 'College', 
-                'intervals': [
-                    { 
-                        'startTimeStamp': '2022-03-04T08:33:28.263717', 
-                        'endTimeStamp': '2022-03-04 10:33:28.264650' 
-                    }, 
-                    { 
-                        'startTimeStamp': '2022-03-04T11:33:28.264758', 
-                        'endTimeStamp': '2022-03-04 11:55:28.264770',
-                    }, 
-                ], 
-                'goalIntervalLengthInSeconds': 500 
-            }, 
-            { 
-                'name': 'IoT', 
-                'intervals': [
-                    { 
-                        'startTimeStamp': '2022-03-04T04:33:28.265051', 
-                        'endTimeStamp': '2022-03-04T06:33:28.265063' 
-                    }, 
-                    {
-                         'startTimeStamp': '2022-03-04T08:33:28.265071', 
-                         'endTimeStamp': '2022-03-04T09:33:28.265078' 
-                    }, 
-                    { 
-                        'startTimeStamp': '2022-03-04T05:33:28.265085',
-                         'endTimeStamp': '2022-03-04T07:33:28.265085'
-                    }
-                ], 
-                'goalIntervalLengthInSeconds': 500 
-            }, 
-            { 
-                'name': 'Work', 
-                'intervals': [
-                    { 
-                        'startTimeStamp': '2022-03-04T08:33:28.265093',
-                        'endTimeStamp': '2022-03-04T10:33:28.265100', 
-                    },
-                    { 
-                        'startTimeStamp': '2022-03-04T11:33:28.265093',
-                        'endTimeStamp': null, 
-                    }
-                ], 
-                'goalIntervalLengthInSeconds': 7200
-            }, 
-            { 
-                'name': 'Personal', 
-                'intervals': [
-                    { 
-                        'startTimeStamp': '2022-03-04T04:33:28.265113', 
-                        'endTimeStamp': '2022-03-04T11:33:28.264777'
-                    }
-                ], 
-                'goalIntervalLengthInSeconds': 500 
-            }
-        ], 
-        'selectedProjectNumber': 2
-    } 
-});
+    response.send({ "data": "Hello"});
 });
 
 exports.takeABreak = functions.https.onRequest((request, response) => {
@@ -86,15 +36,37 @@ exports.takeABreak = functions.https.onRequest((request, response) => {
     response.send({ "data": "Hello from Firebase!" });
 });
 
-exports.updateProjectName = functions.https.onRequest((request, response) => {
+exports.updateProjectName = functions.https.onCall(async (data, context) => {
     functions.logger.info("Hello logs!", { structuredData: true });
-    response.send({ "data": "Hello from Firebase!" });
+    
+    const id = data['id'];
+    const projectIndex = data['selectedProjectNumber'];
+    const name = data['name'];
+
+    changeName(id, projectIndex, name);
+    return 'Successfully changed name';
 });
 
-exports.updateCurrentWorkingProject = functions.https.onRequest((request, response) => {
+function changeName(id, projectIndex, name) {
+    const projectsRef = admin.database().ref('users/' + id + '/projects');
+    projectsRef.child(projectIndex).update({'name': name});
+}
+
+exports.updateCurrentWorkingProject = functions.https.onCall(async (data, context) => {
     functions.logger.info("Hello logs!", { structuredData: true });
-    response.send({ "data": "Hello from Firebase!" });
+    functions.logger.info(data.text, { structuredData: true });
+
+    
+    const id = data['id'];
+    const projectIndex = data['selectedProjectNumber'];
+    changeProject(id, projectIndex);
+    return `Successfully changed project: ${projectIndex}`;
 });
+
+function changeProject(id, projectIndex) {
+    const user = admin.database().ref('users/' + id);
+    user.update({'selectedProjectNumber':projectIndex});
+}
 
 exports.detectPerson = functions.https.onRequest((request, response) => {
     functions.logger.info("Hello logs!", { structuredData: true });
