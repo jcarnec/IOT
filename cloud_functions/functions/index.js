@@ -1,105 +1,10 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
-
+const fcm = admin.messaging();
 
 // Create and Deploy Your First Cloud Functions
 // https://firebase.google.com/docs/functions/write-firebase-functions
-
-exports.updateStatus = functions.https.onCall(async (data, context) => {
-    functions.logger.info("Hello logs!", { structuredData: true });
-
-    const id = data['id'];
-    const userRef = admin.database().ref('users/' + id);
-    userRef.once('value', async (snapshot) => { 
-        const user = snapshot.val();
-        const isUserAlreadyWorking = user['isWorking'];
-        functions.logger.info(user, { structuredData: true });
-        const isUserAtDesk = detectPerson(user);
-
-        functions.logger.info(isUserAtDesk, { structuredData: true });
-    
-        functions.logger.info(user, { structuredData: true });
-    
-        if(!isUserAlreadyWorking && isUserAtDesk) { // Scenario 1
-            functions.logger.info('!isUserAlreadyWorking && isUserAtDesk', { structuredData: true });
-            
-            const selectedProjectNumber = user['selectedProjectNumber']; 
-            const selectedProjectInvervalsRef = userRef.child('projects').child(selectedProjectNumber).child('intervals');
-            functions.logger.info('selectedProjectIntervalsRef '+selectedProjectInvervalsRef, { structuredData: true });
-
-            const intervals = user['projects'][selectedProjectNumber]['intervals'];
-            const lastIndex = intervals.length-1;
-            const mostRecentIntervalRef = selectedProjectInvervalsRef.child(lastIndex + 1);
-            functions.logger.info('mostRecentIntervalRef '+ mostRecentIntervalRef, { structuredData: true });
-
-            functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
-            mostRecentIntervalRef.update({'startTimeStamp':toISOString(new Date())});
-        }
-        else if(isUserAlreadyWorking && isUserAtDesk) { // Scenario 2 & 3 & 6
-            functions.logger.info('isUserAlreadyWorking && isUserAtDesk', { structuredData: true });
-
-            if(user['selectedProjectNumber'] != user['prevProjectNumber']) { // Scenario 6
-                // Closing previous projects interval...
-                const prevProjectNumber = user['prevProjectNumber']; 
-                const prevProjectInvervalsRef = userRef.child('projects').child(prevProjectNumber).child('intervals');
-                functions.logger.info('prevProjectInvervalsRef '+prevProjectInvervalsRef, { structuredData: true });
-
-                const prevIntervals = user['projects'][prevProjectNumber]['intervals'];
-                const prevlastIndex = prevIntervals.length-1;
-                const prevmostRecentIntervalRef = prevProjectInvervalsRef.child(prevlastIndex);
-                functions.logger.info('prevmostRecentIntervalRef '+ prevmostRecentIntervalRef, { structuredData: true });
-
-                functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
-                prevmostRecentIntervalRef.update({'endTimeStamp':toISOString(new Date())});
-                // Closed previous projects interval
-
-                // Creating new interval for the new project...
-                const selectedProjectNumber = user['selectedProjectNumber']; 
-                const selectedProjectInvervalsRef = userRef.child('projects').child(selectedProjectNumber).child('intervals');
-                functions.logger.info('selectedProjectIntervalsRef '+selectedProjectInvervalsRef, { structuredData: true });
-
-                const intervals = user['projects'][selectedProjectNumber]['intervals'];
-                const lastIndex = intervals.length-1;
-                const mostRecentIntervalRef = selectedProjectInvervalsRef.child(lastIndex + 1);
-                functions.logger.info('mostRecentIntervalRef '+ mostRecentIntervalRef, { structuredData: true });
-
-                functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
-                mostRecentIntervalRef.update({'startTimeStamp':toISOString(new Date())});
-                // Created new interval
-            }
-
-            const exceededBreak = checkIfExceededBreak(user);
-            functions.logger.info(exceededBreak, { structuredData: true });
-            if(exceededBreak) { // Scenario 3
-                sendTakeABreakNotification();
-            }
-            else { // Scenario 2
-    
-            }
-        }
-        else if(isUserAlreadyWorking && !isUserAtDesk) { // Scenario 4
-            functions.logger.info('isUserAlreadyWorking && !isUserAtDesk', { structuredData: true });
-
-            const selectedProjectNumber = user['selectedProjectNumber']; 
-            const selectedProjectInvervalsRef = userRef.child('projects').child(selectedProjectNumber).child('intervals');
-            functions.logger.info('selectedProjectIntervalsRef '+selectedProjectInvervalsRef, { structuredData: true });
-
-            const intervals = user['projects'][selectedProjectNumber]['intervals'];
-            const lastIndex = intervals.length-1;
-            const mostRecentIntervalRef = selectedProjectInvervalsRef.child(lastIndex);
-            functions.logger.info('mostRecentIntervalRef '+mostRecentIntervalRef, { structuredData: true });
-
-            functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
-            mostRecentIntervalRef.update({'endTimeStamp':toISOString(new Date())});
-        }
-        else if(!isUserAlreadyWorking && !isUserAtDesk) { // Scenario X
-            functions.logger.info('!isUserAlreadyWorking && !isUserAtDesk', { structuredData: true });
-        }
-        admin.database().ref('users/' + id).update({'isWorking':isUserAtDesk});
-        admin.database().ref('users/' + id).update({'prevProjectNumber': user['selectedProjectNumber']});
-    });
-});
 
 function pad(number) {
     var r = String(number);
@@ -185,8 +90,29 @@ function getLastIntervalForProject(project) {
     return mostRecentInterval;
 }
 
-function sendTakeABreakNotification() {
-
+function sendTakeABreakNotification(user) {
+    functions.logger.info('fcmToken ' + user['fcmToken'], { structuredData: true });
+    console.log("sending message...");
+    var num = user['selectedProjectNumber'];
+    const payload = {
+      notification: {
+        title: "Take a break! You've achieved your goal",
+        body: "",
+        sound: "default",
+      },
+      data: {
+        projectIndex: num.toString(),
+        // name: String(closestPlace.name),
+        // imageUrl: url,
+        // long: String(closestPlace.geometry.location.lng),
+        // lat: String(closestPlace.geometry.location.lat),
+        // types: JSON.stringify(closestPlace.types),
+      },
+    };
+    fcm.sendToDevice(user['fcmToken'], payload, {
+      priority: "high",
+    });
+    console.log("message sent");
 }
 
 function createNewInterval(startTime) {
@@ -210,6 +136,7 @@ exports.update = functions.https.onCall(async (data, context) => {
         const isUserAlreadyWorking = user['isWorking'];
         functions.logger.info(user, { structuredData: true });
         const isUserAtDesk = detectPerson(user);
+        const fcmToken = user['fcmToken'];
 
         functions.logger.info(isUserAtDesk, { structuredData: true });
     
@@ -234,6 +161,7 @@ exports.update = functions.https.onCall(async (data, context) => {
             functions.logger.info('isUserAlreadyWorking && isUserAtDesk', { structuredData: true });
 
             if(user['selectedProjectNumber'] != user['prevProjectNumber']) { // Scenario 6
+                functions.logger.info('project has changed', { structuredData: true });
                 // Closing previous projects interval...
                 const prevProjectNumber = user['prevProjectNumber']; 
                 const prevProjectInvervalsRef = userRef.child('projects').child(prevProjectNumber).child('intervals');
@@ -261,15 +189,16 @@ exports.update = functions.https.onCall(async (data, context) => {
                 functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
                 mostRecentIntervalRef.update({'startTimeStamp':toISOString(new Date())});
                 // Created new interval
-            }
-
-            const exceededBreak = checkIfExceededBreak(user);
-            functions.logger.info(exceededBreak, { structuredData: true });
-            if(exceededBreak) { // Scenario 3
-                sendTakeABreakNotification();
-            }
-            else { // Scenario 2
-    
+            } else {
+                functions.logger.info('project is the same', { structuredData: true });
+                const exceededBreak = checkIfExceededBreak(user);
+                functions.logger.info(exceededBreak, { structuredData: true });
+                if(exceededBreak) { // Scenario 3
+                    sendTakeABreakNotification(user);
+                }
+                else { // Scenario 2
+        
+                }
             }
         }
         else if(isUserAlreadyWorking && !isUserAtDesk) { // Scenario 4
