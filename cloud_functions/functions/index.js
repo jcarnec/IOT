@@ -1,5 +1,8 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const fetch = require('node-fetch');
+const vision = require('@google-cloud/vision');
+const client = new vision.ImageAnnotatorClient();
 admin.initializeApp(functions.config().firebase);
 const fcm = admin.messaging();
 
@@ -127,24 +130,60 @@ function parseISOString(s) {
 }
 
 exports.update = functions.https.onCall(async (data, context) => {
-    functions.logger.info("Hello logs!", { structuredData: true });
-
-    const id = data['id'];
+    console.log("Update starting");
+    functions.logger.info(data, { structuredData: true });
+    const img_base64 = data['image'];
+    const id = 'RKQ1201022002';
     const userRef = admin.database().ref('users/' + id);
-    userRef.once('value', async (snapshot) => { 
-        const user = snapshot.val();
-        const isUserAlreadyWorking = user['isWorking'];
-        functions.logger.info(user, { structuredData: true });
-        const isUserAtDesk = detectPerson(user);
-        const fcmToken = user['fcmToken'];
+    var flag = false;
+    var user;
+    await userRef.once('value', async (snapshot) => { 
+        user = snapshot.val();
+    });
+    const isUserAlreadyWorking = user['isWorking'];
+    functions.logger.info({"user": user}, { structuredData: true });
+    const isUserAtDesk = img_base64 != null ? await detectPerson(img_base64) : data['atDesk'];
+    const fcmToken = user['fcmToken'];
 
-        functions.logger.info(isUserAtDesk, { structuredData: true });
-    
-        functions.logger.info(user, { structuredData: true });
-    
-        if(!isUserAlreadyWorking && isUserAtDesk) { // Scenario 1
-            functions.logger.info('!isUserAlreadyWorking && isUserAtDesk', { structuredData: true });
-            
+    functions.logger.info({"isUserAtDesk":isUserAtDesk}, { structuredData: true });
+
+    functions.logger.info({"user": user}, { structuredData: true });
+
+    if(!isUserAlreadyWorking && isUserAtDesk) { // Scenario 1
+        functions.logger.info('!isUserAlreadyWorking && isUserAtDesk', { structuredData: true });
+        
+        const selectedProjectNumber = user['selectedProjectNumber']; 
+        const selectedProjectInvervalsRef = userRef.child('projects').child(selectedProjectNumber).child('intervals');
+        functions.logger.info('selectedProjectIntervalsRef '+selectedProjectInvervalsRef, { structuredData: true });
+
+        const intervals = user['projects'][selectedProjectNumber]['intervals'];
+        const lastIndex = intervals.length-1;
+        const mostRecentIntervalRef = selectedProjectInvervalsRef.child(lastIndex + 1);
+        functions.logger.info('mostRecentIntervalRef '+ mostRecentIntervalRef, { structuredData: true });
+
+        functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
+        mostRecentIntervalRef.update({'startTimeStamp':toISOString(new Date())});
+    }
+    else if(isUserAlreadyWorking && isUserAtDesk) { // Scenario 2 & 3 & 6
+        functions.logger.info('isUserAlreadyWorking && isUserAtDesk', { structuredData: true });
+
+        if(user['selectedProjectNumber'] != user['prevProjectNumber']) { // Scenario 6
+            functions.logger.info('project has changed', { structuredData: true });
+            // Closing previous projects interval...
+            const prevProjectNumber = user['prevProjectNumber']; 
+            const prevProjectInvervalsRef = userRef.child('projects').child(prevProjectNumber).child('intervals');
+            functions.logger.info('prevProjectInvervalsRef '+prevProjectInvervalsRef, { structuredData: true });
+
+            const prevIntervals = user['projects'][prevProjectNumber]['intervals'];
+            const prevlastIndex = prevIntervals.length-1;
+            const prevmostRecentIntervalRef = prevProjectInvervalsRef.child(prevlastIndex);
+            functions.logger.info('prevmostRecentIntervalRef '+ prevmostRecentIntervalRef, { structuredData: true });
+
+            functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
+            prevmostRecentIntervalRef.update({'endTimeStamp':toISOString(new Date())});
+            // Closed previous projects interval
+
+            // Creating new interval for the new project...
             const selectedProjectNumber = user['selectedProjectNumber']; 
             const selectedProjectInvervalsRef = userRef.child('projects').child(selectedProjectNumber).child('intervals');
             functions.logger.info('selectedProjectIntervalsRef '+selectedProjectInvervalsRef, { structuredData: true });
@@ -156,72 +195,42 @@ exports.update = functions.https.onCall(async (data, context) => {
 
             functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
             mostRecentIntervalRef.update({'startTimeStamp':toISOString(new Date())});
-        }
-        else if(isUserAlreadyWorking && isUserAtDesk) { // Scenario 2 & 3 & 6
-            functions.logger.info('isUserAlreadyWorking && isUserAtDesk', { structuredData: true });
-
-            if(user['selectedProjectNumber'] != user['prevProjectNumber']) { // Scenario 6
-                functions.logger.info('project has changed', { structuredData: true });
-                // Closing previous projects interval...
-                const prevProjectNumber = user['prevProjectNumber']; 
-                const prevProjectInvervalsRef = userRef.child('projects').child(prevProjectNumber).child('intervals');
-                functions.logger.info('prevProjectInvervalsRef '+prevProjectInvervalsRef, { structuredData: true });
-
-                const prevIntervals = user['projects'][prevProjectNumber]['intervals'];
-                const prevlastIndex = prevIntervals.length-1;
-                const prevmostRecentIntervalRef = prevProjectInvervalsRef.child(prevlastIndex);
-                functions.logger.info('prevmostRecentIntervalRef '+ prevmostRecentIntervalRef, { structuredData: true });
-
-                functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
-                prevmostRecentIntervalRef.update({'endTimeStamp':toISOString(new Date())});
-                // Closed previous projects interval
-
-                // Creating new interval for the new project...
-                const selectedProjectNumber = user['selectedProjectNumber']; 
-                const selectedProjectInvervalsRef = userRef.child('projects').child(selectedProjectNumber).child('intervals');
-                functions.logger.info('selectedProjectIntervalsRef '+selectedProjectInvervalsRef, { structuredData: true });
-
-                const intervals = user['projects'][selectedProjectNumber]['intervals'];
-                const lastIndex = intervals.length-1;
-                const mostRecentIntervalRef = selectedProjectInvervalsRef.child(lastIndex + 1);
-                functions.logger.info('mostRecentIntervalRef '+ mostRecentIntervalRef, { structuredData: true });
-
-                functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
-                mostRecentIntervalRef.update({'startTimeStamp':toISOString(new Date())});
-                // Created new interval
-            } else {
-                functions.logger.info('project is the same', { structuredData: true });
-                const exceededBreak = checkIfExceededBreak(user);
-                functions.logger.info(exceededBreak, { structuredData: true });
-                if(exceededBreak) { // Scenario 3
-                    sendTakeABreakNotification(user);
-                }
-                else { // Scenario 2
-        
-                }
+            // Created new interval
+        } else {
+            functions.logger.info('project is the same', { structuredData: true });
+            const exceededBreak = checkIfExceededBreak(user);
+            functions.logger.info(exceededBreak, { structuredData: true });
+            if(exceededBreak) { // Scenario 3
+                sendTakeABreakNotification(user);
+                flag = true;
+            }
+            else { // Scenario 2
+    
             }
         }
-        else if(isUserAlreadyWorking && !isUserAtDesk) { // Scenario 4
-            functions.logger.info('isUserAlreadyWorking && !isUserAtDesk', { structuredData: true });
+    }
+    else if(isUserAlreadyWorking && !isUserAtDesk) { // Scenario 4
+        functions.logger.info('isUserAlreadyWorking && !isUserAtDesk', { structuredData: true });
 
-            const selectedProjectNumber = user['selectedProjectNumber']; 
-            const selectedProjectInvervalsRef = userRef.child('projects').child(selectedProjectNumber).child('intervals');
-            functions.logger.info('selectedProjectIntervalsRef '+selectedProjectInvervalsRef, { structuredData: true });
+        const selectedProjectNumber = user['selectedProjectNumber']; 
+        const selectedProjectInvervalsRef = userRef.child('projects').child(selectedProjectNumber).child('intervals');
+        functions.logger.info('selectedProjectIntervalsRef '+selectedProjectInvervalsRef, { structuredData: true });
 
-            const intervals = user['projects'][selectedProjectNumber]['intervals'];
-            const lastIndex = intervals.length-1;
-            const mostRecentIntervalRef = selectedProjectInvervalsRef.child(lastIndex);
-            functions.logger.info('mostRecentIntervalRef '+mostRecentIntervalRef, { structuredData: true });
+        const intervals = user['projects'][selectedProjectNumber]['intervals'];
+        const lastIndex = intervals.length-1;
+        const mostRecentIntervalRef = selectedProjectInvervalsRef.child(lastIndex);
+        functions.logger.info('mostRecentIntervalRef '+mostRecentIntervalRef, { structuredData: true });
 
-            functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
-            mostRecentIntervalRef.update({'endTimeStamp':toISOString(new Date())});
-        }
-        else if(!isUserAlreadyWorking && !isUserAtDesk) { // Scenario X
-            functions.logger.info('!isUserAlreadyWorking && !isUserAtDesk', { structuredData: true });
-        }
-        admin.database().ref('users/' + id).update({'isWorking':isUserAtDesk});
-        admin.database().ref('users/' + id).update({'prevProjectNumber': user['selectedProjectNumber']});
-    });
+        functions.logger.info('Date now '+toISOString(new Date()), { structuredData: true });
+        mostRecentIntervalRef.update({'endTimeStamp':toISOString(new Date())});
+    }
+    else if(!isUserAlreadyWorking && !isUserAtDesk) { // Scenario X
+        functions.logger.info('!isUserAlreadyWorking && !isUserAtDesk', { structuredData: true });
+    }
+    admin.database().ref('users/' + id).update({'isWorking':isUserAtDesk});
+    admin.database().ref('users/' + id).update({'prevProjectNumber': user['selectedProjectNumber']});
+    functions.logger.info({"Returning":flag}, { structuredData: true });
+    return flag;
 });
 
 exports.updateGoalIntervalLengthForProject = functions.https.onCall(async (data, context) => {
@@ -292,6 +301,64 @@ function changeProject(id, projectIndex) {
     user.update({'selectedProjectNumber':projectIndex});
 }
 
-function detectPerson(user) {
-    return user['atDesk'];
+async function detectPerson(img_base64) {
+    functions.logger.info("Detecting person....", { structuredData: true });
+    const detected = await annotateImage(img_base64);
+    functions.logger.info(detected, { structuredData: true });    
+
+    return detected;
 }
+
+
+function decodeBase64Image(dataString) {
+    var matches = dataString.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/),
+        response = {};
+
+    if (matches.length !== 3) {
+        return new Error('Invalid input string');
+    }
+
+    response.type = matches[1];
+    response.data = new Buffer(matches[2], 'base64');
+
+    return response;
+}
+
+// This will allow only requests with an auth token to access the Vision
+// API, including anonymous ones.
+// It is highly recommended to limit access only to signed-in users. This may
+// be done by adding the following condition to the if statement:
+//    || context.auth.token?.firebase?.sign_in_provider === 'anonymous'
+// 
+// For more fine-grained control, you may add additional failure checks, ie:
+//    || context.auth.token?.firebase?.email_verified === false
+// Also see: https://firebase.google.com/docs/auth/admin/custom-claims
+async function annotateImage(img_base64) {
+//   if (!context.auth) {
+//     throw new functions.https.HttpsError(
+//       "unauthenticated",
+//       "annotateImage must be called while authenticated."
+//     );
+//   }
+    try {
+        const [result] = await client.faceDetection({
+            image: {
+              content: img_base64
+            }
+        });
+        const faces = result.faceAnnotations;
+        console.log('faces:');
+        functions.logger.info({"faces length": faces.length}, { structuredData: true });
+        faces.forEach((face, i) => {
+            console.log(`  Face #${i + 1}:`);
+            console.log(`    Joy: ${face.joyLikelihood}`);
+            console.log(`    Anger: ${face.angerLikelihood}`);
+            console.log(`    Sorrow: ${face.sorrowLikelihood}`);
+            console.log(`    Surprise: ${face.surpriseLikelihood}`);
+        });
+        return faces.length != 0;
+    } catch (e) {
+        functions.logger.info(e, { structuredData: true });
+        throw e;
+    }
+};
