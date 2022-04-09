@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "594605825040",
+    "firebase_url": "https://smart-work-fa92c-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "smart-work-fa92c",
+    "storage_bucket": "smart-work-fa92c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:594605825040:android:d03d8ac5a896c80334fe95",
+        "android_client_info": {
+          "package_name": "com.progresssnap.track_my_work"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "594605825040-u4hmj7b1n917ijdsevn24tad1u8i80dt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfhusSYXue779nNK9cbqhxA1pf4T4l8Eo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "594605825040-u4hmj7b1n917ijdsevn24tad1u8i80dt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
